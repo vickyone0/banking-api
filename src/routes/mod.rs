@@ -1,9 +1,16 @@
 use actix_web::web;
+use crate::auth::middleware::JwtMiddleware;
+use crate::auth::jwt::JwtConfig;
+use std::env;
 
 pub mod user;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(
+    let jwt_config = JwtConfig::new(
+        env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
+    );
+    cfg.app_data(web::Data::new(jwt_config))
+    .service(
         web::scope("/api")
             .service(
                 web::resource("/register")
@@ -15,7 +22,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             )
             .service(
                 web::resource("/profile")
-                    //.route(web::get().to(user::get_profile))
+                    .wrap(JwtMiddleware)
+                    .route(web::get().to(user::get_profile))
                     .route(web::put().to(user::update_profile)),
             ),
     );

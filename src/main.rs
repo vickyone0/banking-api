@@ -4,6 +4,7 @@ use std::env;
 
 mod models;
 mod routes;
+mod auth;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
