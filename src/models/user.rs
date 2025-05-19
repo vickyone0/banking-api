@@ -1,8 +1,8 @@
-use uuid::Uuid;
+use bcrypt::{DEFAULT_COST, hash, verify};
 use chrono::{DateTime, Utc};
-use serde::{Serialize, Deserialize};
-use bcrypt::{hash, verify, DEFAULT_COST};
+use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct User {
@@ -47,14 +47,10 @@ impl User {
         password: String,
         pool: &sqlx::PgPool,
     ) -> Result<Self, anyhow::Error> {
-        let user = sqlx::query_as!(
-            Self,
-            "SELECT * FROM users WHERE email = $1",
-            email
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(anyhow::anyhow!("User not found"))?;
+        let user = sqlx::query_as!(Self, "SELECT * FROM users WHERE email = $1", email)
+            .fetch_optional(pool)
+            .await?
+            .ok_or(anyhow::anyhow!("User not found"))?;
 
         if verify(password, &user.password_hash)? {
             Ok(user)
@@ -63,17 +59,10 @@ impl User {
         }
     }
 
-    pub async fn get_by_id(
-        user_id: &Uuid,
-        pool: &sqlx::PgPool,
-    ) -> Result<Self, anyhow::Error> {
-        let user = sqlx::query_as!(
-            Self,
-            "SELECT * FROM users WHERE id = $1",
-            user_id
-        )
-        .fetch_one(pool)
-        .await?;
+    pub async fn get_by_id(user_id: &Uuid, pool: &sqlx::PgPool) -> Result<Self, anyhow::Error> {
+        let user = sqlx::query_as!(Self, "SELECT * FROM users WHERE id = $1", user_id)
+            .fetch_one(pool)
+            .await?;
         Ok(user)
     }
 

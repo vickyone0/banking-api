@@ -1,13 +1,13 @@
-use jsonwebtoken::{encode, decode, Header, Validation, EncodingKey, DecodingKey};
-use serde::{Serialize, Deserialize};
-use chrono::{Utc, DateTime};
+use chrono::{DateTime, Utc};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,  // User ID
-    pub exp: usize,   // Expiration time
-    pub iat: usize,   // Issued at
+    pub sub: String, // User ID
+    pub exp: usize,  // Expiration time
+    pub iat: usize,  // Issued at
 }
 
 pub struct JwtConfig {
@@ -19,7 +19,7 @@ impl JwtConfig {
     pub fn new(secret: String) -> Self {
         Self {
             secret,
-            expiration_hours: 24,  // 24 hours expiration
+            expiration_hours: 24, // 24 hours expiration
         }
     }
 
@@ -49,7 +49,6 @@ impl JwtConfig {
         )
         .map_err(|e| format!("Invalid token: {}", e))?;
 
-        Uuid::parse_str(&token_data.claims.sub)
-            .map_err(|_| "Invalid user ID in token".to_string())
+        Uuid::parse_str(&token_data.claims.sub).map_err(|_| "Invalid user ID in token".to_string())
     }
 }

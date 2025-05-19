@@ -1,11 +1,14 @@
-use actix_web::{dev::{Service, ServiceRequest, ServiceResponse, Transform}, Error};
-use futures_util::future::{ok, Ready, LocalBoxFuture};
+use actix_web::FromRequest;
+use actix_web::{
+    Error,
+    dev::{Service, ServiceRequest, ServiceResponse, Transform},
+};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
-use std::task::{Context, Poll};
-use std::rc::Rc;
+use futures_util::future::{LocalBoxFuture, Ready, ok};
 use std::future::Future;
 use std::pin::Pin;
-use actix_web::FromRequest;
+use std::rc::Rc;
+use std::task::{Context, Poll};
 pub struct JwtMiddleware;
 
 impl<S, B> Transform<S, ServiceRequest> for JwtMiddleware
@@ -20,7 +23,9 @@ where
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ok(JwtMiddlewareService { service: Rc::new(service) })
+        ok(JwtMiddlewareService {
+            service: Rc::new(service),
+        })
     }
 }
 
@@ -44,7 +49,9 @@ where
     fn call(&self, mut req: ServiceRequest) -> Self::Future {
         let service = self.service.clone();
         Box::pin(async move {
-            let bearer = BearerAuth::extract(req.request()).await.map_err(actix_web::error::ErrorUnauthorized)?;
+            let bearer = BearerAuth::extract(req.request())
+                .await
+                .map_err(actix_web::error::ErrorUnauthorized)?;
             // ...validate token, insert user_id, etc...
             service.call(req).await
         })
