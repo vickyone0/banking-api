@@ -2,6 +2,7 @@ use actix_web::{web, HttpResponse, Responder};
 use uuid::Uuid;
 use crate::models::transaction::{Transaction, TransactionType};
 use crate::error::AppError;
+use crate::auth::AuthenticatedUser;
 
 #[derive(serde::Deserialize)]
 pub struct CreateTransactionRequest {
@@ -11,14 +12,14 @@ pub struct CreateTransactionRequest {
 }
 
 pub async fn create_transaction(
-    user_id: web::ReqData<Uuid>,
+    user: AuthenticatedUser,
     payload: web::Json<CreateTransactionRequest>,
     pool: web::Data<sqlx::PgPool>,
 ) -> Result<impl Responder, AppError> {
     let amount = payload.amount.parse().map_err(|_| AppError::ValidationError("Invalid amount".into()))?;
     
     let transaction = Transaction::create(
-        user_id.into_inner(),
+        user.user_id,
         amount,
         payload.transaction_type,
         payload.description.clone(),

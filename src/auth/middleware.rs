@@ -1,59 +1,48 @@
-use actix_web::FromRequest;
-use actix_web::{
-    Error,
-    dev::{Service, ServiceRequest, ServiceResponse, Transform},
-};
+use actix_web::{web,dev::{Payload, ServiceRequest}, Error as ActixError, FromRequest, HttpMessage, HttpRequest};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
-use futures_util::future::{LocalBoxFuture, Ready, ok};
-use std::future::Future;
-use std::pin::Pin;
-use std::rc::Rc;
-use std::task::{Context, Poll};
-pub struct JwtMiddleware;
+use futures::future::{ready, Ready};
+use uuid::Uuid;
 
-impl<S, B> Transform<S, ServiceRequest> for JwtMiddleware
-where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
-    B: 'static,
-{
-    type Response = ServiceResponse<B>;
-    type Error = Error;
-    type Transform = JwtMiddlewareService<S>;
-    type InitError = ();
-    type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
-    fn new_transform(&self, service: S) -> Self::Future {
-        ok(JwtMiddlewareService {
-            service: Rc::new(service),
-        })
+use crate::auth::jwt::{JwtService, Claims};
+
+pub async fn jwt_validator(
+    req: ServiceRequest,
+    credentials: BearerAuth,
+) -> Result<ServiceRequest, (ActixError, ServiceRequest)> {
+    //let jwt_service = req.app_data::<JwtService>().expect("JwtService not found in app data");
+    let jwt_service = req.app_data::<web::Data<JwtService>>().expect("JwtService not found in app data");
+
+
+    match jwt_service.validate_token(credentials.token()){
+        Ok(claims) => {
+            req.extensions_mut().insert(claims);
+            Ok(req)
+        }
+        Err(e) => Err((e.into(), req)),
+
     }
 }
 
-pub struct JwtMiddlewareService<S> {
-    service: Rc<S>,
+#[derive(Debug)]
+pub struct AuthenticatedUser {
+    pub user_id: Uuid,
+    pub email: String,
 }
 
-impl<S, B> Service<ServiceRequest> for JwtMiddlewareService<S>
-where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
-    B: 'static,
-{
-    type Response = ServiceResponse<B>;
-    type Error = Error;
-    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
+impl FromRequest for AuthenticatedUser {
+    type Error = ActixError;
+    type Future = Ready<Result<Self, Self::Error>>;
 
-    fn poll_ready(&self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.service.poll_ready(ctx)
-    }
+    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
+        let extensions = req.extensions();
+        let claims = extensions
+            .get::<Claims>()
+            .expect("Claims not found in request extensions");
 
-    fn call(&self, mut req: ServiceRequest) -> Self::Future {
-        let service = self.service.clone();
-        Box::pin(async move {
-            let bearer = BearerAuth::extract(req.request())
-                .await
-                .map_err(actix_web::error::ErrorUnauthorized)?;
-            // ...validate token, insert user_id, etc...
-            service.call(req).await
-        })
+    ready(Ok(AuthenticatedUser {
+        user_id: claims.sub,
+        email: claims.email.clone(),
+    }))
     }
 }

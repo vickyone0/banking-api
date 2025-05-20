@@ -1,6 +1,7 @@
 use actix_web::web;
-use crate::auth::middleware::JwtMiddleware;
-use crate::auth::jwt::JwtConfig;
+use actix_web_httpauth::middleware::HttpAuthentication;
+use crate::auth::middleware::{jwt_validator};
+use crate::auth::jwt::JwtService;
 use std::env;
 
 pub mod user;
@@ -8,9 +9,8 @@ pub mod transactions;
 pub mod balance;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
-    let jwt_config = JwtConfig::new(
-        env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
-    );
+    let jwt_config = JwtService::from_env();
+    let auth = HttpAuthentication::bearer(jwt_validator);
 
     cfg.app_data(web::Data::new(jwt_config))
     .service(
@@ -28,7 +28,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             // Protected routes
             .service(
                 web::scope("")
-                    .wrap(JwtMiddleware)
+                    .wrap(auth)
                     .service(
                         web::resource("/profile")
                             .route(web::get().to(user::get_profile))

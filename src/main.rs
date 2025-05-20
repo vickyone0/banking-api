@@ -1,15 +1,23 @@
-use actix_web::{App, HttpServer, web};
+use actix_web::{App, HttpServer, web, middleware::Logger};
 use sqlx::postgres::PgPoolOptions;
 use std::env;
+
+use crate::auth::jwt::JwtService;
 
 mod auth;
 mod error;
 mod models;
 mod routes;
 
+
+
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv::dotenv().ok();
+    env_logger::init();
+
+    let jwt_service = JwtService::from_env(); 
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = PgPoolOptions::new()
@@ -20,6 +28,8 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+        .app_data(web::Data::new(jwt_service.clone()))
+            .wrap(Logger::default())
             .app_data(web::Data::new(pool.clone()))
             .configure(routes::configure)
     })
@@ -27,3 +37,4 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
+//eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMzZkYzI5MC0xOWQ0LTQ0ZjUtYmRkNi1jNzk5OTM4ZTVkZDciLCJleHAiOjE3NDc4MDMxNDQsImlhdCI6MTc0NzcxNjc0NH0.tTeDx8eec38DO1KSNDQWw-axqlvFWRokR_OrJ6uHLbY
