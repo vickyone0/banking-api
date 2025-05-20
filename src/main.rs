@@ -2,12 +2,10 @@ use actix_web::{App, HttpServer, middleware::Logger, web};
 use sqlx::postgres::PgPoolOptions;
 use std::env;
 
-use crate::auth::jwt::JwtService;
+use banking_api::auth::jwt::JwtService;
+use banking_api::routes;
 
-mod auth;
-mod error;
-mod models;
-mod routes;
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
