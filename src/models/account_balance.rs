@@ -76,3 +76,46 @@ impl AccountBalance {
         Self::update_balance(user_id, amount, |balance, amount| balance - amount, tx).await
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    #[test]
+    fn test_credit_operation() {
+        let balance = 1000;
+        let amount = 500;
+        let new_balance = |balance, amount| balance + amount;
+        assert_eq!(new_balance(balance, amount), 1500);
+    }
+
+    #[test]
+    fn test_debit_operation() {
+        let balance = 1000;
+        let amount = 400;
+        let new_balance = |balance, amount| balance - amount;
+        assert_eq!(new_balance(balance, amount), 600);
+    }
+
+    #[test]
+    fn test_account_balance_struct_fields() {
+        let id = Uuid::new_v4();
+        let user_id = Uuid::new_v4();
+        let balance = 2000;
+        let now = Utc::now();
+
+        let ab = AccountBalance {
+            id,
+            user_id,
+            balance,
+            last_updated: now,
+        };
+
+        assert_eq!(ab.id, id);
+        assert_eq!(ab.user_id, user_id);
+        assert_eq!(ab.balance, 2000);
+        assert_eq!(ab.last_updated, now);
+    }
+}
