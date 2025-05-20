@@ -116,3 +116,39 @@ impl User {
         Ok(user)
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bcrypt::{hash, verify, DEFAULT_COST};
+
+    #[test]
+    fn test_password_hash_and_verify() {
+        let password = "mysecretpassword";
+        let hashed = hash(password, DEFAULT_COST).unwrap();
+        assert!(verify(password, &hashed).unwrap());
+        assert!(!verify("wrongpassword", &hashed).unwrap());
+    }
+
+    #[test]
+    fn test_user_struct_fields() {
+        let id = Uuid::new_v4();
+        let now = Utc::now();
+        let user = User {
+            id,
+            username: "testuser".to_string(),
+            email: "test@example.com".to_string(),
+            password_hash: "hashed".to_string(),
+            created_at: now,
+            updated_at: now,
+        };
+
+        assert_eq!(user.id, id);
+        assert_eq!(user.username, "testuser");
+        assert_eq!(user.email, "test@example.com");
+        assert_eq!(user.password_hash, "hashed");
+        assert_eq!(user.created_at, now);
+        assert_eq!(user.updated_at, now);
+    }
+}
