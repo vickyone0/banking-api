@@ -1,11 +1,10 @@
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use serde::{Serialize, Deserialize};
-use sqlx::FromRow;
 use crate::error::AppError;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+use uuid::Uuid;
 
 use super::AccountBalance;
-
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct Transaction {
@@ -17,9 +16,8 @@ pub struct Transaction {
     pub created_at: DateTime<Utc>,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, sqlx::Type)]
-#[sqlx(type_name = "transaction_type" , rename_all = "lowercase")]
+#[sqlx(type_name = "transaction_type", rename_all = "lowercase")]
 pub enum TransactionType {
     Debit,
     Credit,
@@ -33,7 +31,6 @@ impl Transaction {
         description: Option<String>,
         pool: &sqlx::PgPool,
     ) -> Result<Self, AppError> {
-
         //validate amount is positive
         if amount <= 0 {
             return Err(AppError::ValidationError("Amount must be positive".into()));
@@ -55,24 +52,20 @@ impl Transaction {
         .fetch_one(&mut *tx)
         .await?;
 
-    match transaction_type {
-        TransactionType::Credit => {
-            AccountBalance::credit(user_id, amount, &mut tx).await?;
+        match transaction_type {
+            TransactionType::Credit => {
+                AccountBalance::credit(user_id, amount, &mut tx).await?;
+            }
+            TransactionType::Debit => {
+                AccountBalance::debit(user_id, amount, &mut tx).await?;
+            }
         }
-        TransactionType::Debit => {
-            AccountBalance::debit(user_id, amount, &mut tx).await?;
-        }
-    }
         tx.commit().await?;
 
         Ok(transaction)
     }
 
-
-    pub async fn get_by_user(
-        user_id: Uuid,
-        pool: &sqlx::PgPool,
-    ) -> Result<Vec<Self>, AppError> {
+    pub async fn get_by_user(user_id: Uuid, pool: &sqlx::PgPool) -> Result<Vec<Self>, AppError> {
         let transactions = sqlx::query_as::<_, Self>(
             "
             SELECT * FROM transactions

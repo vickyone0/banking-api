@@ -3,9 +3,9 @@ use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::auth::AuthenticatedUser;
 use crate::auth::JwtService;
 use crate::models::User;
-use crate::auth::AuthenticatedUser;
 
 // Request payloads
 #[derive(serde::Deserialize)]

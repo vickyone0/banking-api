@@ -1,12 +1,12 @@
-use actix_web::{web, HttpResponse, Responder};
-use uuid::Uuid;
-use crate::models::transaction::{Transaction, TransactionType};
-use crate::error::AppError;
 use crate::auth::AuthenticatedUser;
+use crate::error::AppError;
+use crate::models::transaction::{Transaction, TransactionType};
+use actix_web::{HttpResponse, Responder, web};
+use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
 pub struct CreateTransactionRequest {
-    amount: String,  // String to avoid floating point precision issues
+    amount: i64, // String to avoid floating point precision issues
     transaction_type: TransactionType,
     description: Option<String>,
 }
@@ -16,23 +16,25 @@ pub async fn create_transaction(
     payload: web::Json<CreateTransactionRequest>,
     pool: web::Data<sqlx::PgPool>,
 ) -> Result<impl Responder, AppError> {
-    let amount = payload.amount.parse().map_err(|_| AppError::ValidationError("Invalid amount".into()))?;
-    
+    //let amount = payload.amount.parse().map_err(|_| AppError::ValidationError("Invalid amount".into()))?;
+    let amount = payload.amount;
     let transaction = Transaction::create(
         user.user_id,
         amount,
         payload.transaction_type,
         payload.description.clone(),
         &pool,
-    ).await?;
+    )
+    .await?;
 
     Ok(HttpResponse::Ok().json(transaction))
 }
 
 pub async fn get_user_transactions(
-    user_id: web::ReqData<Uuid>,
+    user: AuthenticatedUser,
     pool: web::Data<sqlx::PgPool>,
 ) -> Result<impl Responder, AppError> {
-    let transactions = Transaction::get_by_user(user_id.into_inner(), &pool).await?;
+    let user_id = user.user_id;
+    let transactions = Transaction::get_by_user(user_id, &pool).await?;
     Ok(HttpResponse::Ok().json(transactions))
 }

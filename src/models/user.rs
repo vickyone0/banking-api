@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+use super::AccountBalance;
+
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct User {
     pub id: Uuid,
@@ -22,7 +24,11 @@ impl User {
         email: String,
         password: String,
         pool: &sqlx::PgPool,
-    ) -> Result<Self, anyhow::Error> {
+    ) -> Result<(Self,AccountBalance), anyhow::Error> {
+
+        // Start a transaction
+        let mut tx = pool.begin().await?;
+
         let hashed_password = hash(password, DEFAULT_COST)?;
         let user = sqlx::query_as!(
             Self,
@@ -35,10 +41,26 @@ impl User {
             email,
             hashed_password
         )
-        .fetch_one(pool)
+        .fetch_one(&mut *tx)
+        .await?;  
+
+         // Create the account balance with initial 0 balance
+        let account_balance = sqlx::query_as!(
+            AccountBalance,
+            r#"
+            INSERT INTO account_balances (user_id, balance, last_updated)
+            VALUES ($1, 0, NOW())
+            RETURNING *
+            "#,
+            user.id
+        )
+        .fetch_one(&mut *tx)
         .await?;
 
-        Ok(user)
+        // Commit the transaction
+        tx.commit().await?;
+    
+        Ok((user,account_balance))
     }
 
     // User authentication

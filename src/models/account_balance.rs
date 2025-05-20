@@ -1,8 +1,8 @@
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use serde::{Serialize, Deserialize};
-use sqlx::{FromRow, Postgres, Transaction};
 use crate::error::AppError;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::{FromRow, Postgres, Transaction};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct AccountBalance {
@@ -13,10 +13,7 @@ pub struct AccountBalance {
 }
 
 impl AccountBalance {
-    pub async fn get_balance(
-        user_id: Uuid,
-        pool: &sqlx::PgPool,
-    ) -> Result<Self, AppError> {
+    pub async fn get_balance(user_id: Uuid, pool: &sqlx::PgPool) -> Result<Self, AppError> {
         let balance = sqlx::query_as!(
             Self,
             "SELECT * FROM account_balances WHERE user_id = $1",

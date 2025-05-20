@@ -1,14 +1,13 @@
 use chrono::{DateTime, Utc};
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use std::env;
 use uuid::Uuid;
 
 use crate::auth::errors::AuthError;
 
-
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Claims{
+pub struct Claims {
     pub sub: Uuid,
     pub exp: usize,
     pub iat: usize,
@@ -23,13 +22,16 @@ pub struct JwtService {
 
 impl JwtService {
     pub fn from_env() -> Self {
-        JwtService { secret: env::var("JWT_SECRET").expect("JWT_SECRET must be set"), expiration_hours: 24 }
+        JwtService {
+            secret: env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
+            expiration_hours: 24,
+        }
     }
 
     pub fn generate_token(&self, user_id: Uuid, email: &str) -> Result<String, AuthError> {
-
         let now = Utc::now().timestamp() as usize;
-        let expiration = (Utc::now() + chrono::Duration::hours(self.expiration_hours)).timestamp() as usize;
+        let expiration =
+            (Utc::now() + chrono::Duration::hours(self.expiration_hours)).timestamp() as usize;
 
         let claims = Claims {
             sub: user_id,
@@ -55,6 +57,4 @@ impl JwtService {
         .map_err(|_| AuthError::InvalidToken)
         .map(|data| data.claims)
     }
-        
-    }
-
+}

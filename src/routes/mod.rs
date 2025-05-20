@@ -1,30 +1,22 @@
+use crate::auth::jwt::JwtService;
+use crate::auth::middleware::jwt_validator;
 use actix_web::web;
 use actix_web_httpauth::middleware::HttpAuthentication;
-use crate::auth::middleware::{jwt_validator};
-use crate::auth::jwt::JwtService;
 use std::env;
 
-pub mod user;
-pub mod transactions;
 pub mod balance;
+pub mod transactions;
+pub mod user;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     let jwt_config = JwtService::from_env();
     let auth = HttpAuthentication::bearer(jwt_validator);
 
-    cfg.app_data(web::Data::new(jwt_config))
-    .service(
+    cfg.app_data(web::Data::new(jwt_config)).service(
         web::scope("/api")
             // Public routes
-            .service(
-                web::resource("/register")
-                    .route(web::post().to(user::register)),
-            )
-            .service(
-                web::resource("/login")
-                    .route(web::post().to(user::login)),
-            )
-            
+            .service(web::resource("/register").route(web::post().to(user::register)))
+            .service(web::resource("/login").route(web::post().to(user::login)))
             // Protected routes
             .service(
                 web::scope("")
@@ -43,10 +35,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     //     web::resource("/transactions/{id}")
                     //         .route(web::get().to(transactions::get_transaction)),
                     // )
-                    .service(
-                        web::resource("/balance")
-                            .route(web::get().to(balance::get_balance)),
-                    ),
+                    .service(web::resource("/balance").route(web::get().to(balance::get_balance))),
             ),
     );
 }
