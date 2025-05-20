@@ -1,25 +1,25 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Postgres, Transaction};
 use uuid::Uuid;
+use chrono::{DateTime, Utc};
+use serde::{Serialize, Deserialize};
+use sqlx::{FromRow, Postgres, Transaction};
 use crate::error::AppError;
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct AccountBalance {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub balance: i64,
+    pub balance: i64, // Stored in cents/pence
     pub last_updated: DateTime<Utc>,
 }
 
 impl AccountBalance {
-    pub async fn get_balance(user_id: Uuid, pool: &sqlx::PgPool) -> Result<Self, AppError> {
+    pub async fn get_balance(
+        user_id: Uuid,
+        pool: &sqlx::PgPool,
+    ) -> Result<Self, AppError> {
         let balance = sqlx::query_as!(
             Self,
-            r#"
-            SELECT * FROM account_balances
-            WHERE user_id = $1
-            "#,
+            "SELECT * FROM account_balances WHERE user_id = $1",
             user_id
         )
         .fetch_one(pool)
@@ -34,17 +34,11 @@ impl AccountBalance {
         operation: impl Fn(i64, i64) -> i64,
         tx: &mut Transaction<'_, Postgres>,
     ) -> Result<Self, AppError> {
-        // Use the transaction directly (no &mut needed)
-        let current = sqlx::query_as!(
-            Self,
-            r#"
-            SELECT * FROM account_balances
-            WHERE user_id = $1
-            FOR UPDATE
-            "#,
-            user_id
+        let current = sqlx::query_as::<_, Self>(
+            "SELECT * FROM account_balances WHERE user_id = $1 FOR UPDATE",
         )
-        .fetch_one(&mut *tx)  // Note: single dereference
+        .bind(user_id)
+        .fetch_one(&mut **tx)
         .await?;
 
         let new_balance = operation(current.balance, amount);
@@ -53,18 +47,17 @@ impl AccountBalance {
             return Err(AppError::InsufficientFunds);
         }
 
-        let updated = sqlx::query_as!(
-            Self,
+        let updated = sqlx::query_as::<_, Self>(
             r#"
             UPDATE account_balances
             SET balance = $1, last_updated = NOW()
             WHERE user_id = $2
             RETURNING *
             "#,
-            new_balance,
-            user_id
         )
-        .fetch_one(&mut *tx)
+        .bind(new_balance)
+        .bind(user_id)
+        .fetch_one(&mut **tx)
         .await?;
 
         Ok(updated)

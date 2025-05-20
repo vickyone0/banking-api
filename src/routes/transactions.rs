@@ -18,7 +18,7 @@ pub async fn create_transaction(
     let amount = payload.amount.parse().map_err(|_| AppError::ValidationError("Invalid amount".into()))?;
     
     let transaction = Transaction::create(
-        *user_id.into_inner(),
+        user_id.into_inner(),
         amount,
         payload.transaction_type,
         payload.description.clone(),
@@ -32,6 +32,6 @@ pub async fn get_user_transactions(
     user_id: web::ReqData<Uuid>,
     pool: web::Data<sqlx::PgPool>,
 ) -> Result<impl Responder, AppError> {
-    let transactions = Transaction::get_by_user(*user_id.into_inner(), &pool).await?;
+    let transactions = Transaction::get_by_user(user_id.into_inner(), &pool).await?;
     Ok(HttpResponse::Ok().json(transactions))
 }
