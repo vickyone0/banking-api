@@ -29,7 +29,7 @@ It supports user registration, authentication (JWT), balance management, and tra
 
 1. **Clone the repository:**
    ```sh
-   git clone https://github.com/yourusername/banking-api.git
+   git clone https://github.com/vickyone0/banking-api.git
    cd banking-api
    ```
 
